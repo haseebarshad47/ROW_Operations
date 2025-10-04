@@ -174,7 +174,7 @@ th{background:var(--primary);color:#fff}
     updateSummary();renderTodayAttendance();
   }
 
-  // ---- Rest of your functions (unchanged) ----
+  // ---- Functions ----
   function addOrUpdateTask(){let c=document.getElementById("clientName").value;let t=document.getElementById("taskName").value.trim();let a=document.getElementById("assignedTo").value;let s=document.getElementById("statusSelect").value;let d=document.getElementById("dueDate").value;let r=document.getElementById("repeatSelect").value;let idx=document.getElementById("editIndex").value;if(!c||!t||!a){alert("Fill all fields");return;}if(idx){tasks[idx]={client:c,task:t,assigned:a,status:s,due:d,repeat:r};}else{tasks.push({client:c,task:t,assigned:a,status:s,due:d,repeat:r});}document.getElementById("editIndex").value="";saveData();renderTable();}
   function editTask(i){let t=tasks[i];document.getElementById("clientName").value=t.client;document.getElementById("taskName").value=t.task;document.getElementById("assignedTo").value=t.assigned;document.getElementById("statusSelect").value=t.status;document.getElementById("dueDate").value=t.due||todayStr();document.getElementById("repeatSelect").value=t.repeat||"";document.getElementById("editIndex").value=i;}
   function deleteTask(i){if(confirm("Delete?")){tasks.splice(i,1);saveData();renderTable();}}
@@ -193,14 +193,28 @@ th{background:var(--primary);color:#fff}
   function loadAttendanceMembers(){let sel=document.getElementById("attendanceMember");sel.innerHTML=team.map(m=>`<option>${m}</option>`).join("");}
   function saveSingleAttendance(){let d=document.getElementById("attendanceDate").value;let m=document.getElementById("attendanceMember").value;let s=document.getElementById("attendanceStatus").value;let rec=attendance.find(a=>a.date===d&&a.member===m);if(rec){rec.status=s;}else{attendance.push({date:d,member:m,status:s});}saveData();document.getElementById("attendanceMsg").textContent="Saved ✅";setTimeout(()=>document.getElementById("attendanceMsg").textContent="",1200);}
   function renderTodayAttendance(){let today=todayStr();let box=document.getElementById("todayAttendance");box.innerHTML="";team.forEach(m=>{let rec=attendance.find(a=>a.date===today&&a.member===m);let st=rec?rec.status:"Absent";box.innerHTML+=`<span class="badge ${st.replace(" ","").toLowerCase()}">${m}: ${st}</span>`;});}
-  function downloadAttendance(){let m=document.getElementById("reportMonth").value;if(!m){alert("Pick month");return;}let rows=["Date,Member,Status"];attendance.filter(a=>a.date.startsWith(m)).forEach(a=>rows.push(`${a.date},${a.member},${a.status}`));let blob=new Blob([rows.join("\\n")],{type:"text/csv"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`attendance-${m}.csv`;a.click();}
-  function loadDropdowns(){document.getElementById("clientName").innerHTML=clients.map(c=>`<option>${c}</option>`).join("");document.getElementById("assignedTo").innerHTML=team.map(m=>`<option>${m}</option>`).join("");renderClients();renderTeam();}
+  function downloadAttendance(){let m=document.getElementById("reportMonth").value;if(!m){alert("Select month");return;}let rows=["Date,Member,Status"];attendance.filter(a=>a.date.startsWith(m)).forEach(a=>rows.push(`${a.date},${a.member},${a.status}`));let blob=new Blob([rows.join("\n")],{type:"text/csv"});let url=URL.createObjectURL(blob);let a=document.createElement("a");a.href=url;a.download="attendance.csv";a.click();URL.revokeObjectURL(url);}
+  function loadDropdowns(){document.getElementById("clientName").innerHTML=clients.map(c=>`<option>${c}</option>`).join("");document.getElementById("assignedTo").innerHTML=team.map(m=>`<option>${m}</option>`).join("");}
+  function todayStr(){let d=new Date();return d.toISOString().split("T")[0];}
   function statusText(s){return s==="pending"?"Pending":s==="inprogress"?"In Progress":"Completed";}
-  function todayStr(){return new Date().toISOString().substr(0,10);}
   function openModal(id){document.getElementById(id).style.display="block";}
   function closeModal(id){document.getElementById(id).style.display="none";}
 
-  // init
+  // Expose globally so HTML onclick works
+  window.addOrUpdateTask=addOrUpdateTask;
+  window.editTask=editTask;
+  window.deleteTask=deleteTask;
+  window.changeStatus=changeStatus;
+  window.addClient=addClient;
+  window.deleteClient=deleteClient;
+  window.addTeam=addTeam;
+  window.deleteTeam=deleteTeam;
+  window.openModal=openModal;
+  window.closeModal=closeModal;
+  window.onOpenAttendance=onOpenAttendance;
+  window.saveSingleAttendance=saveSingleAttendance;
+  window.downloadAttendance=downloadAttendance;
+
   loadData();
 </script>
 </body>
