@@ -84,15 +84,17 @@ nav button:hover{background:#e9f3ff}
   import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
   // 🔑 Your Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyB_XW2aQbvfLrD-UFNflcoC73YJRTpfl3k",
-    authDomain: "row-task.firebaseapp.com",
-    databaseURL: "https://row-task-default-rtdb.firebaseio.com",  <!-- IMPORTANT -->
-    projectId: "row-task",
-    storageBucket: "row-task.firebasestorage.app",
-    messagingSenderId: "17432691787",
-    appId: "1:17432691787:web:b3b474db8e4fd43b83f9ce"
-  };
+ // 🔹 Replace with your Firebase config
+const firebaseConfig = {
+  apiKey: "AbCdEfGhIjKlMnOpQrStUvWxYz123456789",
+  authDomain: "row-task.firebaseapp.com",
+  databaseURL: "https://row-task-default-rtdb.firebaseio.com",
+  projectId: "row-task",
+  storageBucket: "row-task.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abc123def456"
+};
+
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
@@ -169,3 +171,4 @@ nav button:hover{background:#e9f3ff}
 
 </body>
 </html>
+
