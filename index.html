@@ -119,108 +119,71 @@ th{background:var(--primary);color:#fff}
   </div>
 </div></div>
 
-<!-- MODULE SCRIPT: Firebase + App logic -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.30.2/firebase-app.js";
-  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.30.2/firebase-database.js";
-
-  // ---- PUT YOUR FIREBASE CONFIG HERE ----
-  const firebaseConfig = {
-    apiKey: "AIzaSyB_XW2aQbvfLrD-UFNflcoC73YJRTpfl3k",
-    authDomain: "row-task.firebaseapp.com",
-    // IMPORTANT: replace with the Realtime Database URL shown in your console if different:
-    databaseURL: "https://row-task-default-rtdb.firebaseio.com",
-    projectId: "row-task",
-    storageBucket: "row-task.firebasestorage.app",
-    messagingSenderId: "17432691787",
-    appId: "1:17432691787:web:b3b474db8e4fd43b83f9ce"
-  };
-  // ----------------------------------------
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  const dataRef = ref(db, "data"); // path where we'll store your tasks/clients/team/attendance
-
-  // App state
-  let tasks = [], clients = [], team = [], attendance = [];
-
-  // Listen for realtime changes (initial load + updates)
-  onValue(dataRef, (snap) => {
-    if (snap.exists()) {
-      const d = snap.val();
-      tasks = d.tasks || [];
-      clients = d.clients || ["Client A"];
-      team = d.team || ["Rohama","Fakhar","Mubashir"];
-      attendance = d.attendance || [];
-    } else {
-      tasks = []; clients = ["Client A"]; team = ["Rohama","Fakhar","Mubashir"]; attendance = [];
-    }
-    loadDropdowns(); renderTable(); updateSummary(); renderTodayAttendance();
-  }, (err) => console.error("DB listen error:", err));
-
-  // Save whole state (overwrites path /data)
-  async function saveData(){
-    try{
-      await set(dataRef, { tasks, clients, team, attendance });
-    }catch(e){
-      console.error("Error saving:", e);
-    }
-    updateSummary(); renderTodayAttendance();
-  }
-
-  // --- All your existing functions (same logic) ---
-  function addOrUpdateTask(){let c=document.getElementById("clientName").value;let t=document.getElementById("taskName").value.trim();let a=document.getElementById("assignedTo").value;let s=document.getElementById("statusSelect").value;let d=document.getElementById("dueDate").value;let r=document.getElementById("repeatSelect").value;let idx=document.getElementById("editIndex").value;if(!c||!t||!a){alert("Fill all fields");return;}if(idx){tasks[idx]={client:c,task:t,assigned:a,status:s,due:d,repeat:r};}else{tasks.push({client:c,task:t,assigned:a,status:s,due:d,repeat:r});}document.getElementById("editIndex").value="";saveData();renderTable();}
-  function editTask(i){let t=tasks[i];document.getElementById("clientName").value=t.client;document.getElementById("taskName").value=t.task;document.getElementById("assignedTo").value=t.assigned;document.getElementById("statusSelect").value=t.status;document.getElementById("dueDate").value=t.due||todayStr();document.getElementById("repeatSelect").value=t.repeat||"";document.getElementById("editIndex").value=i;}
-  function deleteTask(i){if(confirm("Delete?")){tasks.splice(i,1);saveData();renderTable();}}
-  function changeStatus(i){let s=tasks[i].status;tasks[i].status=s==="pending"?"inprogress":s==="inprogress"?"completed":"pending";saveData();renderTable();}
-  function renderTable(){let tb=document.querySelector("#taskTable tbody");tb.innerHTML="";tasks.forEach((t,i)=>{tb.innerHTML+=`<tr><td>${t.client}</td><td>${t.task}</td><td>${t.assigned}</td><td><button class="status-btn ${t.status}" onclick="changeStatus(${i})">${statusText(t.status)}</button></td><td>${t.due||"-"}</td><td>${t.repeat||"-"}</td><td><button onclick="editTask(${i})">✏</button> <button onclick="deleteTask(${i})">🗑</button></td></tr>`;});}
-  function updateSummary(){let p=tasks.filter(t=>t.status==="pending").length;let ip=tasks.filter(t=>t.status==="inprogress").length;let c=tasks.filter(t=>t.status==="completed").length;document.getElementById("pendingCount").textContent=p;document.getElementById("inProgressCount").textContent=ip;document.getElementById("completedCount").textContent=c;updateCharts(p,ip,c);}
-  let statusChart,teamChart;
-  function updateCharts(p,ip,c){
-    if(statusChart)statusChart.destroy();
-    statusChart=new Chart(document.getElementById("statusChart"),{type:"doughnut",data:{labels:["Pending","In Progress","Completed"],datasets:[{data:[p,ip,c],backgroundColor:["#dc3545","#ffc107","#28a745"]}]},options:{plugins:{legend:{display:false}}}});
-    if(teamChart)teamChart.destroy();
-    let members=team;
-    let pendingCounts   = members.map(m=>tasks.filter(t=>t.assigned===m && t.status==="pending").length);
-    let inProgressCounts= members.map(m=>tasks.filter(t=>t.assigned===m && t.status==="inprogress").length);
-    let completedCounts = members.map(m=>tasks.filter(t=>t.assigned===m && t.status==="completed").length);
-    teamChart=new Chart(document.getElementById("teamChart"),{
-      type:"bar",
-      data:{labels:members,datasets:[
-        {label:"Pending",data:pendingCounts,backgroundColor:"#dc3545"},
-        {label:"In Progress",data:inProgressCounts,backgroundColor:"#ffc107"},
-        {label:"Completed",data:completedCounts,backgroundColor:"#28a745"}
-      ]},
-      options:{responsive:true,plugins:{legend:{position:"bottom"}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}
-    });
-  }
-  function renderClients(){let tb=document.getElementById("clientTable");tb.innerHTML="";clients.forEach((c,i)=>tb.innerHTML+=`<tr><td>${c}</td><td><button onclick="deleteClient(${i})">🗑</button></td></tr>`);}
-  function addClient(){let n=document.getElementById("newClient").value.trim();if(n&&!clients.includes(n)){clients.push(n);document.getElementById("newClient").value="";saveData();renderClients();loadDropdowns();}}
-  function deleteClient(i){if(tasks.some(t=>t.client===clients[i])){alert("Client in use");return;}clients.splice(i,1);saveData();renderClients();loadDropdowns();}
-  function renderTeam(){let tb=document.getElementById("teamTable");tb.innerHTML="";team.forEach((m,i)=>tb.innerHTML+=`<tr><td>${m}</td><td><button onclick="deleteTeam(${i})">🗑</button></td></tr>`);}
-  function addTeam(){let n=document.getElementById("newTeam").value.trim();if(n&&!team.includes(n)){team.push(n);document.getElementById("newTeam").value="";saveData();renderTeam();loadDropdowns();}}
-  function deleteTeam(i){if(tasks.some(t=>t.assigned===team[i])){alert("Member in use");return;}team.splice(i,1);saveData();renderTeam();loadDropdowns();}
-  function onOpenAttendance(){document.getElementById("attendanceDate").value=todayStr();loadAttendanceMembers();}
-  function loadAttendanceMembers(){let sel=document.getElementById("attendanceMember");sel.innerHTML=team.map(m=>`<option>${m}</option>`).join("");}
-  function saveSingleAttendance(){let d=document.getElementById("attendanceDate").value;let m=document.getElementById("attendanceMember").value;let s=document.getElementById("attendanceStatus").value;let rec=attendance.find(a=>a.date===d&&a.member===m);if(rec){rec.status=s;}else{attendance.push({date:d,member:m,status:s});}saveData();document.getElementById("attendanceMsg").textContent="Saved ✅";setTimeout(()=>document.getElementById("attendanceMsg").textContent="",1200);}
-  function renderTodayAttendance(){let today=todayStr();let box=document.getElementById("todayAttendance");box.innerHTML="";team.forEach(m=>{let rec=attendance.find(a=>a.date===today&&a.member===m);let st=rec?rec.status:"Absent";box.innerHTML+=`<span class="badge ${st.replace(" ","").toLowerCase()}">${m}: ${st}</span>`;});}
-  function downloadAttendance(){let month=document.getElementById("reportMonth").value;if(!month){alert("Select month");return;}let rows=["Date,Member,Status"];attendance.filter(a=>a.date.startsWith(month)).forEach(a=>{rows.push(`${a.date},${a.member},${a.status}`);});let blob=new Blob([rows.join("\n")],{type:"text/csv"});let url=URL.createObjectURL(blob);let a=document.createElement("a");a.href=url;a.download=`attendance_${month}.csv`;a.click();URL.revokeObjectURL(url);}
-  function loadDropdowns(){document.getElementById("clientName").innerHTML=clients.map(c=>`<option>${c}</option>`).join("");document.getElementById("assignedTo").innerHTML=team.map(m=>`<option>${m}</option>`).join("");}
-  function statusText(s){return s==="pending"?"Pending":s==="inprogress"?"In Progress":"Completed";}
-  function todayStr(){return new Date().toISOString().split("T")[0];}
-  function openModal(id){document.getElementById(id).style.display="block";}
-  function closeModal(id){document.getElementById(id).style.display="none";}
-
-  // ==== expose functions used by inline onclick handlers ====
-  Object.assign(window, {
-    addOrUpdateTask, editTask, deleteTask, changeStatus,
-    renderTable, renderClients, addClient, deleteClient,
-    renderTeam, addTeam, deleteTeam, onOpenAttendance,
-    loadAttendanceMembers, saveSingleAttendance, downloadAttendance,
-    loadDropdowns, openModal, closeModal
+<script>
+let tasks=[],clients=[],team=[],attendance=[];
+async function loadData(){try{let r=await fetch("/api/data");let d=await r.json();tasks=d.tasks||[];clients=d.clients||["Client A"];team=d.team||["Rohama","Fakhar","Mubashir"];attendance=d.attendance||[];}catch(e){clients=["Client A"];team=["Rohama","Fakhar","Mubashir"];attendance=[];}loadDropdowns();renderTable();updateSummary();renderTodayAttendance();}
+async function saveData(){try{await fetch("/api/data",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks,clients,team,attendance})});}catch(e){}updateSummary();renderTodayAttendance();}
+function addOrUpdateTask(){let c=document.getElementById("clientName").value;let t=document.getElementById("taskName").value.trim();let a=document.getElementById("assignedTo").value;let s=document.getElementById("statusSelect").value;let d=document.getElementById("dueDate").value;let r=document.getElementById("repeatSelect").value;let idx=document.getElementById("editIndex").value;if(!c||!t||!a){alert("Fill all fields");return;}if(idx){tasks[idx]={client:c,task:t,assigned:a,status:s,due:d,repeat:r};}else{tasks.push({client:c,task:t,assigned:a,status:s,due:d,repeat:r});}document.getElementById("editIndex").value="";saveData();renderTable();}
+function editTask(i){let t=tasks[i];document.getElementById("clientName").value=t.client;document.getElementById("taskName").value=t.task;document.getElementById("assignedTo").value=t.assigned;document.getElementById("statusSelect").value=t.status;document.getElementById("dueDate").value=t.due||todayStr();document.getElementById("repeatSelect").value=t.repeat||"";document.getElementById("editIndex").value=i;}
+function deleteTask(i){if(confirm("Delete?")){tasks.splice(i,1);saveData();renderTable();}}
+function changeStatus(i){let s=tasks[i].status;tasks[i].status=s==="pending"?"inprogress":s==="inprogress"?"completed":"pending";saveData();renderTable();}
+function renderTable(){let tb=document.querySelector("#taskTable tbody");tb.innerHTML="";tasks.forEach((t,i)=>{tb.innerHTML+=`<tr><td>${t.client}</td><td>${t.task}</td><td>${t.assigned}</td><td><button class="status-btn ${t.status}" onclick="changeStatus(${i})">${statusText(t.status)}</button></td><td>${t.due||"-"}</td><td>${t.repeat||"-"}</td><td><button onclick="editTask(${i})">✏</button> <button onclick="deleteTask(${i})">🗑</button></td></tr>`;});}
+function updateSummary(){let p=tasks.filter(t=>t.status==="pending").length;let ip=tasks.filter(t=>t.status==="inprogress").length;let c=tasks.filter(t=>t.status==="completed").length;document.getElementById("pendingCount").textContent=p;document.getElementById("inProgressCount").textContent=ip;document.getElementById("completedCount").textContent=c;updateCharts(p,ip,c);}
+let statusChart,teamChart;
+function updateCharts(p,ip,c){
+  if(statusChart)statusChart.destroy();
+  statusChart=new Chart(document.getElementById("statusChart"),{type:"doughnut",data:{labels:["Pending","In Progress","Completed"],datasets:[{data:[p,ip,c],backgroundColor:["#dc3545","#ffc107","#28a745"]}]},options:{plugins:{legend:{display:false}}}});
+  if(teamChart)teamChart.destroy();
+  let members=team;
+  let pendingCounts   = members.map(m=>tasks.filter(t=>t.assigned===m && t.status==="pending").length);
+  let inProgressCounts= members.map(m=>tasks.filter(t=>t.assigned===m && t.status==="inprogress").length);
+  let completedCounts = members.map(m=>tasks.filter(t=>t.assigned===m && t.status==="completed").length);
+  teamChart=new Chart(document.getElementById("teamChart"),{
+    type:"bar",
+    data:{labels:members,datasets:[
+      {label:"Pending",data:pendingCounts,backgroundColor:"#dc3545"},
+      {label:"In Progress",data:inProgressCounts,backgroundColor:"#ffc107"},
+      {label:"Completed",data:completedCounts,backgroundColor:"#28a745"}
+    ]},
+    options:{responsive:true,plugins:{legend:{position:"bottom"}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}
   });
-
-  // initial UI state will be populated by the onValue listener above
+}
+function renderClients(){let tb=document.getElementById("clientTable");tb.innerHTML="";clients.forEach((c,i)=>tb.innerHTML+=`<tr><td>${c}</td><td><button onclick="deleteClient(${i})">🗑</button></td></tr>`);}
+function addClient(){let n=document.getElementById("newClient").value.trim();if(n&&!clients.includes(n)){clients.push(n);document.getElementById("newClient").value="";saveData();renderClients();loadDropdowns();}}
+function deleteClient(i){if(tasks.some(t=>t.client===clients[i])){alert("Client in use");return;}clients.splice(i,1);saveData();renderClients();loadDropdowns();}
+function renderTeam(){let tb=document.getElementById("teamTable");tb.innerHTML="";team.forEach((m,i)=>tb.innerHTML+=`<tr><td>${m}</td><td><button onclick="deleteTeam(${i})">🗑</button></td></tr>`);}
+function addTeam(){let n=document.getElementById("newTeam").value.trim();if(n&&!team.includes(n)){team.push(n);document.getElementById("newTeam").value="";saveData();renderTeam();loadDropdowns();}}
+function deleteTeam(i){if(tasks.some(t=>t.assigned===team[i])){alert("Member in use");return;}team.splice(i,1);saveData();renderTeam();loadDropdowns();}
+function onOpenAttendance(){document.getElementById("attendanceDate").value=todayStr();loadAttendanceMembers();}
+function loadAttendanceMembers(){let sel=document.getElementById("attendanceMember");sel.innerHTML=team.map(m=>`<option>${m}</option>`).join("");}
+function saveSingleAttendance(){let d=document.getElementById("attendanceDate").value;let m=document.getElementById("attendanceMember").value;let s=document.getElementById("attendanceStatus").value;let rec=attendance.find(a=>a.date===d&&a.member===m);if(rec){rec.status=s;}else{attendance.push({date:d,member:m,status:s});}saveData();document.getElementById("attendanceMsg").textContent="Saved ✅";setTimeout(()=>document.getElementById("attendanceMsg").textContent="",1200);}
+function renderTodayAttendance(){let today=todayStr();let box=document.getElementById("todayAttendance");box.innerHTML="";team.forEach(m=>{let rec=attendance.find(a=>a.date===today&&a.member===m);let st=rec?rec.status:"Absent";box.innerHTML+=`<span class="badge ${st.replace(" ","").toLowerCase()}">${m}: ${st}</span>`;});}
+function downloadAttendance(){let month=document.getElementById("reportMonth").value;if(!month){alert("Select month");return;}let rows=["Date,Member,Status"];attendance.filter(a=>a.date.startsWith(month)).forEach(a=>{rows.push(`${a.date},${a.member},${a.status}`);});let blob=new Blob([rows.join("\n")],{type:"text/csv"});let url=URL.createObjectURL(blob);let a=document.createElement("a");a.href=url;a.download=`attendance_${month}.csv`;a.click();URL.revokeObjectURL(url);}
+function loadDropdowns(){document.getElementById("clientName").innerHTML=clients.map(c=>`<option>${c}</option>`).join("");document.getElementById("assignedTo").innerHTML=team.map(m=>`<option>${m}</option>`).join("");}
+function statusText(s){return s==="pending"?"Pending":s==="inprogress"?"In Progress":"Completed";}
+function todayStr(){return new Date().toISOString().split("T")[0];}
+function openModal(id){document.getElementById(id).style.display="block";}
+function closeModal(id){document.getElementById(id).style.display="none";}
+loadData();
 </script>
 </body>
 </html>
+
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyB_XW2aQbvfLrD-UFNflcoC73YJRTpfl3k",
+  authDomain: "row-task.firebaseapp.com",
+  projectId: "row-task",
+  storageBucket: "row-task.firebasestorage.app",
+  messagingSenderId: "17432691787",
+  appId: "1:17432691787:web:b3b474db8e4fd43b83f9ce"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
