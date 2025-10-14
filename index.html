@@ -1,108 +1,669 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>ROW Marketing – Task Portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8" />
+<title>ROW Marketing - Task Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --primary:#007bff;--success:#28a745;--danger:#dc3545;
+  --warning:#ffc107;--muted:#6c757d;--bg:#f4f6f9;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:#222}
+header{background:linear-gradient(90deg,#007bff,#00aaff);color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;}
+header h1{margin:0;font-size:18px;font-weight:600}
+nav{display:flex;gap:6px;align-items:center}
+nav button{background:#fff;color:var(--primary);border:0;border-radius:18px;padding:6px 10px;cursor:pointer;font-weight:600}
+nav button:hover{background:#e9f3ff}
+main{padding:14px;max-width:1100px;margin:auto;}
+.top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap}
+.today-att{flex:1;background:#fff;padding:8px 12px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.06);}
+.today-att h3{margin:0 0 6px 0;font-size:14px}
+.badge{display:inline-block;margin:2px 4px;padding:4px 8px;border-radius:999px;font-size:12px;color:#fff}
+.present{background:var(--success)} .halfday{background:var(--warning);color:#000}
+.absent{background:var(--danger)} .leave{background:var(--muted)} .late{background:#ff5733}
+.summary{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:#fff;border-radius:10px;padding:8px 12px;box-shadow:0 2px 6px rgba(0,0,0,.06);text-align:center;min-width:90px}
+.card h4{margin:0;font-size:12px;color:#444}
+.card span{display:block;font-size:18px;font-weight:700;margin-top:4px}
+.charts-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.chart-box{flex:1;background:#fff;padding:12px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.06);}
+.chart-box h4{margin:0 0 8px 0;font-size:14px}
+#statusChart{max-width:220px!important;max-height:220px!important;margin:auto;}
+#teamChart{width:100%!important;max-height:260px!important}
+.task-form{background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.06);margin-bottom:12px;}
+.task-form h3{margin:0 0 6px 0;font-size:16px}
+.task-form .row{display:flex;flex-wrap:wrap;gap:8px}
+input,select,button{padding:8px;border:1px solid #ddd;border-radius:6px}
+button.save-btn{background:var(--primary);color:#fff;border:0;font-weight:600;cursor:pointer}
+button.save-btn:hover{opacity:.9}
+table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+th,td{padding:8px;border:1px solid #eee;text-align:center}
+th{background:var(--primary);color:#fff}
+.status-btn{padding:6px 10px;border:0;border-radius:8px;color:#fff;cursor:pointer;font-weight:600}
+.pending{background:var(--danger)} .inprogress{background:var(--warning);color:#000}
+.completed_check{background:#17a2b8;color:#fff} /* teal for check stage */
+.verified{background:var(--success)}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000}
+.modal-content{background:#fff;margin:6% auto;padding:16px;border-radius:10px;width:760px;max-width:95vw;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.close{float:right;cursor:pointer;font-weight:700}
+
+/* ✅ Overdue Task highlight */
+.overdue { background:#ffe5e5 !important; }
+
+/* Attendance table inside modal */
+.att-table{width:100%;border-collapse:collapse;margin-top:8px}
+.att-table th, .att-table td{padding:6px;border:1px solid #eee;text-align:left}
+.att-actions button{margin-right:6px}
+
+/* ✅ Dark Mode */
+body.dark{background:#1e1e1e;color:#eee;}
+body.dark header{background:linear-gradient(90deg,#222,#444);}
+body.dark .card, body.dark .task-form, body.dark table, body.dark .chart-box, body.dark .today-att, body.dark .modal-content{
+  background:#2a2a2a;color:#ddd;box-shadow:0 2px 6px rgba(255,255,255,0.05);
+}
+body.dark th{background:#333;}
+body.dark nav button{background:#333;color:#eee}
+body.dark nav button:hover{background:#2a2a2a}
+</style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body>
 
-  <!-- Header -->
-  <header class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold">📋 ROW Marketing – Task Portal</h1>
-  </header>
+<header>
+  <h1>ROW Marketing - Task Portal</h1>
+  <nav>
+    <button onclick="openModal('clientModal')">Clients</button>
+    <button onclick="openModal('teamModal')">Team</button>
+    <button onclick="openModal('attendanceModal'); onOpenAttendance();">Attendance</button>
+    <button onclick="openModal('adminModal')">Admin</button>
+    <button onclick="openModal('supervisorModal')">Supervisor</button>
+    <button id="darkToggleBtn" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
+  </nav>
+</header>
 
-  <!-- Filters -->
-  <section class="p-4 bg-white mt-2 rounded-lg shadow flex flex-col md:flex-row gap-2 md:gap-4">
-    <select id="clientFilter" class="p-2 border rounded w-full md:w-1/3">
-      <option value="">Filter by Client</option>
-      <option value="Client A">Client A</option>
-      <option value="Client B">Client B</option>
-      <option value="Client C">Client C</option>
-    </select>
+<main>
+  <div class="top-row">
+    <div class="today-att"><h3>📅 Today’s Attendance</h3><div id="todayAttendance"></div></div>
+    <div class="summary">
+      <div class="card"><h4>✅ Completed (Verified)</h4><span id="completedCount">0</span></div>
+      <div class="card"><h4>⏳ In Progress</h4><span id="inProgressCount">0</span></div>
+      <div class="card"><h4>❌ Pending</h4><span id="pendingCount">0</span></div>
+    </div>
+  </div>
 
-    <select id="memberFilter" class="p-2 border rounded w-full md:w-1/3">
-      <option value="">Filter by Member</option>
-      <option value="Haseeb">Haseeb</option>
-      <option value="Mubashir">Mubashir</option>
-      <option value="Rohama">Rohama</option>
-    </select>
+  <div class="charts-row">
+    <div class="chart-box"><h4>Task Status</h4><canvas id="statusChart"></canvas></div>
+    <div class="chart-box"><h4>Team Tasks</h4><canvas id="teamChart"></canvas></div>
+  </div>
 
-    <select id="statusFilter" class="p-2 border rounded w-full md:w-1/3">
-      <option value="">Filter by Status</option>
-      <option value="Pending">Pending</option>
-      <option value="In Progress">In Progress</option>
-      <option value="Completed">Completed</option>
-    </select>
-  </section>
+  <div class="task-form">
+    <h3>Add / Edit Task</h3>
+    <div class="row">
+      <input type="hidden" id="editIndex">
+      <select id="clientName"></select>
+      <input type="text" id="taskName" placeholder="Task Name">
+      <select id="assignedTo"></select>
+      <select id="statusSelect">
+        <option value="pending">Pending</option>
+        <option value="inprogress">In Progress</option>
+        <option value="completed_check">Completed (Check)</option>
+        <option value="verified">Verified</option>
+      </select>
+      <input type="date" id="dueDate">
+      <select id="repeatSelect">
+        <option value="">No Repeat</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+      <button class="save-btn" onclick="addOrUpdateTask()">Save</button>
+    </div>
+  </div>
 
-  <!-- Task Table -->
-  <section class="p-4 overflow-x-auto">
-    <table class="min-w-full bg-white rounded-lg shadow">
-      <thead>
-        <tr class="bg-gray-200 text-left text-sm uppercase tracking-wider">
-          <th class="p-3">Client</th>
-          <th class="p-3">Task</th>
-          <th class="p-3">Assigned To</th>
-          <th class="p-3">Status</th>
-          <th class="p-3">Deadline</th>
-        </tr>
-      </thead>
-      <tbody id="taskTable" class="divide-y divide-gray-100">
-        <tr data-client="Client A" data-member="Haseeb" data-status="Pending">
-          <td class="p-3">Client A</td>
-          <td class="p-3">Design Homepage</td>
-          <td class="p-3">Haseeb</td>
-          <td class="p-3 text-yellow-600">Pending</td>
-          <td class="p-3">15 Oct 2025</td>
-        </tr>
-        <tr data-client="Client B" data-member="Mubashir" data-status="In Progress">
-          <td class="p-3">Client B</td>
-          <td class="p-3">Social Media Plan</td>
-          <td class="p-3">Mubashir</td>
-          <td class="p-3 text-blue-600">In Progress</td>
-          <td class="p-3">18 Oct 2025</td>
-        </tr>
-        <tr data-client="Client C" data-member="Rohama" data-status="Completed">
-          <td class="p-3">Client C</td>
-          <td class="p-3">Carousel Design</td>
-          <td class="p-3">Rohama</td>
-          <td class="p-3 text-green-600">Completed</td>
-          <td class="p-3">10 Oct 2025</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  <table id="taskTable">
+    <thead>
+      <tr><th>Client</th><th>Task</th><th>Assigned</th><th>Status</th><th>Due</th><th>Repeat</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</main>
 
-  <script>
-    const clientFilter = document.getElementById('clientFilter');
-    const memberFilter = document.getElementById('memberFilter');
-    const statusFilter = document.getElementById('statusFilter');
-    const rows = document.querySelectorAll('#taskTable tr');
+<!-- Admin Modal -->
+<div id="adminModal" class="modal"><div class="modal-content">
+  <span class="close" onclick="closeModal('adminModal')">×</span>
+  <h3>Admin Login</h3>
+  <div id="adminLoginBox">
+    <input type="password" id="adminPass" placeholder="Enter Password">
+    <button onclick="adminLogin()">Login</button>
+  </div>
+  <div id="adminPanel" style="display:none;">
+    <h4>Set Office Timings</h4>
+    <label>Start:</label><input type="time" id="officeStart">
+    <label>End:</label><input type="time" id="officeEnd">
+    <button onclick="saveOfficeTiming()">Save Timing</button>
+    <button onclick="adminLogout()">Logout</button>
+  </div>
+</div></div>
 
-    function filterTable() {
-      const clientVal = clientFilter.value.toLowerCase();
-      const memberVal = memberFilter.value.toLowerCase();
-      const statusVal = statusFilter.value.toLowerCase();
+<!-- Supervisor Modal -->
+<div id="supervisorModal" class="modal"><div class="modal-content">
+  <span class="close" onclick="closeModal('supervisorModal')">×</span>
+  <h3>Supervisor Mode</h3>
+  <div id="supervisorLoginBox">
+    <input type="password" id="supervisorPass" placeholder="Password (super123)">
+    <button onclick="supervisorLogin()">Login</button>
+  </div>
+  <div id="supervisorPanel" style="display:none;">
+    <p style="margin-top:0">Supervisor mode is <b>ON</b>. You can verify tasks.</p>
+    <button onclick="supervisorLogout()">Logout</button>
+  </div>
+</div></div>
 
-      rows.forEach(row => {
-        const client = row.dataset.client.toLowerCase();
-        const member = row.dataset.member.toLowerCase();
-        const status = row.dataset.status.toLowerCase();
+<!-- Clients Modal -->
+<div id="clientModal" class="modal"><div class="modal-content">
+  <span class="close" onclick="closeModal('clientModal')">×</span>
+  <h3>Manage Clients</h3>
+  <div style="display:flex;gap:8px;margin-bottom:8px">
+    <input type="text" id="newClient" placeholder="Add new client" style="flex:1">
+    <button onclick="addClient()">Add</button>
+  </div>
+  <table><tbody id="clientTable"></tbody></table>
+</div></div>
 
-        const show =
-          (clientVal === '' || client === clientVal) &&
-          (memberVal === '' || member === memberVal) &&
-          (statusVal === '' || status === statusVal);
+<!-- Team Modal -->
+<div id="teamModal" class="modal"><div class="modal-content">
+  <span class="close" onclick="closeModal('teamModal')">×</span>
+  <h3>Manage Team</h3>
+  <div style="display:flex;gap:8px;margin-bottom:8px">
+    <input type="text" id="newTeam" placeholder="Add new member" style="flex:1">
+    <button onclick="addTeam()">Add</button>
+  </div>
+  <table><tbody id="teamTable"></tbody></table>
+</div></div>
 
-        row.style.display = show ? '' : 'none';
-      });
+<!-- Attendance Modal -->
+<div id="attendanceModal" class="modal"><div class="modal-content">
+  <span class="close" onclick="closeModal('attendanceModal')">×</span>
+  <h3>Manage Attendance</h3>
+
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <label style="min-width:60px">Date:</label>
+    <input type="date" id="attendanceDate" readonly>
+    <label style="min-width:60px;margin-left:8px">Month:</label>
+    <input type="month" id="reportMonth" style="margin-left:4px">
+    <button onclick="downloadAttendance()" style="margin-left:8px">Download CSV</button>
+  </div>
+
+  <!-- Live attendance grid with Sign In / Sign Out buttons -->
+  <div id="attendanceGridContainer"></div>
+
+  <hr>
+  <h4>📊 Monthly Summary</h4>
+  <div id="attendanceSummary" style="margin-top:10px;font-weight:600;"></div>
+</div></div>
+
+<script>
+/* ========== App State ========== */
+let tasks = [], clients = [], team = [], attendance = [];
+let officeTiming = JSON.parse(localStorage.getItem("officeTiming")) || { start: "09:00", end: "17:00" };
+let isSupervisor = localStorage.getItem("isSupervisor") === "true";
+
+/* ===== Helpers ===== */
+function todayStr(){ return new Date().toISOString().split("T")[0]; }
+function nowHM(){ return new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}); }
+
+/* ===== Admin ===== */
+function saveOfficeTiming(){
+  officeTiming.start = document.getElementById("officeStart").value;
+  officeTiming.end = document.getElementById("officeEnd").value;
+  localStorage.setItem("officeTiming", JSON.stringify(officeTiming));
+  alert("Timing saved!");
+}
+function adminLogin(){
+  const pass = document.getElementById("adminPass").value;
+  if(pass === "admin123"){
+    document.getElementById("adminLoginBox").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    document.getElementById("officeStart").value = officeTiming.start;
+    document.getElementById("officeEnd").value = officeTiming.end;
+  } else alert("Wrong password!");
+}
+function adminLogout(){
+  document.getElementById("adminLoginBox").style.display = "block";
+  document.getElementById("adminPanel").style.display = "none";
+}
+
+/* ===== Supervisor ===== */
+function supervisorLogin(){
+  const pass = document.getElementById("supervisorPass").value;
+  if(pass === "super123"){
+    isSupervisor = true;
+    localStorage.setItem("isSupervisor", "true");
+    document.getElementById("supervisorLoginBox").style.display = "none";
+    document.getElementById("supervisorPanel").style.display = "block";
+    renderTable();
+  } else alert("Wrong password!");
+}
+function supervisorLogout(){
+  isSupervisor = false;
+  localStorage.setItem("isSupervisor", "false");
+  document.getElementById("supervisorLoginBox").style.display = "block";
+  document.getElementById("supervisorPanel").style.display = "none";
+  renderTable();
+}
+
+/* ===== Attendance core ===== */
+/*
+ attendance record shape:
+ { date: "YYYY-MM-DD", member: "Name", signIn: "HH:MM" or "", signOut: "HH:MM" or "", status: "Present"/"Absent"/"Late"/"Half Day"/"Leave" }
+*/
+function ensureAttendanceRecord(member){
+  const date = document.getElementById("attendanceDate").value || todayStr();
+  let rec = attendance.find(a => a.date === date && a.member === member);
+  if(!rec){
+    rec = { date, member, signIn: "", signOut: "", status: "Absent" };
+    attendance.push(rec);
+  }
+  return rec;
+}
+function calcStatusFromTimes(si, so){
+  // si, so strings like "HH:MM" or ""
+  const offIn = new Date("1970-01-01T" + officeTiming.start + ":00");
+  const offOut = new Date("1970-01-01T" + officeTiming.end + ":00");
+  const sIn = si ? new Date("1970-01-01T" + si + ":00") : null;
+  const sOut = so ? new Date("1970-01-01T" + so + ":00") : null;
+
+  if(sIn && !sOut){
+    return sIn > offIn ? "Late" : "Present";
+  }
+  if(sIn && sOut){
+    const hours = (sOut - sIn) / 36e5;
+    if(sIn > offIn) return "Late";
+    if(sOut < offOut || hours < 8) return "Half Day";
+    return "Present";
+  }
+  return "Absent";
+}
+
+/* Sign in/out via buttons */
+function signIn(member){
+  const dateElem = document.getElementById("attendanceDate");
+  const date = dateElem.value || todayStr();
+  dateElem.value = date;
+  let rec = attendance.find(a => a.date === date && a.member === member);
+  const timeNow = nowHM();
+  if(!rec){
+    rec = { date, member, signIn: timeNow, signOut: "", status: "Present" };
+    attendance.push(rec);
+  } else {
+    rec.signIn = timeNow;
+    // if signOut existed from earlier, keep it; status recomputed
+  }
+  rec.status = calcStatusFromTimes(rec.signIn, rec.signOut);
+  localStorage.setItem("attendance", JSON.stringify(attendance));
+  renderAttendanceGrid();
+  renderTodayAttendance();
+}
+
+function signOut(member){
+  const dateElem = document.getElementById("attendanceDate");
+  const date = dateElem.value || todayStr();
+  dateElem.value = date;
+  let rec = attendance.find(a => a.date === date && a.member === member);
+  if(!rec){
+    // if user signs out without signing in, still create record with blank signIn
+    rec = { date, member, signIn: "", signOut: nowHM(), status: "Half Day" };
+    attendance.push(rec);
+  } else {
+    rec.signOut = nowHM();
+  }
+  rec.status = calcStatusFromTimes(rec.signIn, rec.signOut);
+  localStorage.setItem("attendance", JSON.stringify(attendance));
+  renderAttendanceGrid();
+  renderTodayAttendance();
+}
+
+/* Attendance modal UI and summary */
+function onOpenAttendance(){
+  const dateElem = document.getElementById("attendanceDate");
+  dateElem.value = todayStr();
+  const d = new Date();
+  const month = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const monthInput = document.getElementById("reportMonth");
+  if(!monthInput.value) monthInput.value = month;
+  renderAttendanceGrid();
+  showAttendanceSummary(monthInput.value);
+}
+
+function renderAttendanceGrid(){
+  const container = document.getElementById("attendanceGridContainer");
+  const date = document.getElementById("attendanceDate").value || todayStr();
+  let html = `<table class="att-table"><thead><tr><th style="width:28%">Member</th><th style="width:18%">Status</th><th style="width:18%">Sign In</th><th style="width:18%">Sign Out</th><th style="width:18%">Actions</th></tr></thead><tbody>`;
+  team.forEach(m => {
+    const rec = attendance.find(a => a.date === date && a.member === m);
+    const status = rec ? rec.status : "Absent";
+    const signInVal = rec && rec.signIn ? rec.signIn : "-";
+    const signOutVal = rec && rec.signOut ? rec.signOut : "-";
+    html += `<tr>
+      <td>${m}</td>
+      <td>${status}</td>
+      <td>${signInVal}</td>
+      <td>${signOutVal}</td>
+      <td class="att-actions">
+        <button onclick="signIn('${m}')">Sign In</button>
+        <button onclick="signOut('${m}')">Sign Out</button>
+      </td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+/* Download + summary */
+function downloadAttendance(){
+  const month = document.getElementById("reportMonth").value;
+  if(!month){ alert("Select month"); return; }
+  const rows = ["Date,Member,SignIn,SignOut,Status"];
+  attendance.filter(a => a.date && a.date.startsWith(month))
+            .forEach(a => rows.push(`${a.date},${a.member},${a.signIn||""},${a.signOut||""},${a.status||""}`));
+  const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = `attendance_${month}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  showAttendanceSummary(month);
+}
+function showAttendanceSummary(month){
+  const stats = { Present:0, Absent:0, Late:0, "Half Day":0, Leave:0 };
+  attendance.filter(a => a.date && a.date.startsWith(month))
+            .forEach(r => { stats[r.status] = (stats[r.status]||0) + 1; });
+  const box = document.getElementById("attendanceSummary");
+  box.innerHTML = `✅ Present: ${stats.Present||0} | ❌ Absent: ${stats.Absent||0} | ⏰ Late: ${stats.Late||0} | 🌓 Half Day: ${stats["Half Day"]||0}`;
+}
+
+/* Quick render of small top Today's Attendance badges */
+function renderTodayAttendance(){
+  const box = document.getElementById("todayAttendance");
+  box.innerHTML = "";
+  const date = todayStr();
+  team.forEach(m => {
+    const rec = attendance.find(a => a.date === date && a.member === m);
+    const st = rec ? rec.status : "Absent";
+    box.innerHTML += `<span class="badge ${st.replace(" ","").toLowerCase()}">${m}: ${st}</span>`;
+  });
+}
+
+/* ===== Tasks / Team / Clients ===== */
+function loadData(){
+  tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+  // migrate old completed -> completed_check
+  tasks.forEach(t => { if(t.status === "completed") t.status = "completed_check"; });
+
+  clients = JSON.parse(localStorage.getItem("clients")) || ["Client A"];
+  team = JSON.parse(localStorage.getItem("team")) || ["Rohama","Fakhar","Mubashir"];
+  attendance = JSON.parse(localStorage.getItem("attendance")) || [];
+
+  handleRecurringTasks();
+  loadDropdowns();
+  renderTable();
+  updateSummary();
+  renderTodayAttendance();
+  loadDarkMode();
+
+  const monthInput = document.getElementById("reportMonth");
+  if(monthInput && !monthInput._bound){
+    monthInput.addEventListener("change", e => showAttendanceSummary(e.target.value));
+    monthInput._bound = true;
+  }
+}
+
+function addOrUpdateTask(){
+  const c = document.getElementById("clientName").value;
+  const tname = document.getElementById("taskName").value.trim();
+  const a = document.getElementById("assignedTo").value;
+  const s = document.getElementById("statusSelect").value;
+  const d = document.getElementById("dueDate").value;
+  const r = document.getElementById("repeatSelect").value;
+  const idx = document.getElementById("editIndex").value;
+  if(!c || !tname || !a){ alert("Fill all fields"); return; }
+  if(idx){
+    tasks[idx] = { client: c, task: tname, assigned: a, status: s, due: d, repeat: r };
+  } else {
+    tasks.push({ client: c, task: tname, assigned: a, status: s, due: d, repeat: r });
+  }
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+  document.getElementById("editIndex").value = "";
+  renderTable(); updateSummary();
+}
+
+function editTask(i){
+  const t = tasks[i];
+  document.getElementById("clientName").value = t.client;
+  document.getElementById("taskName").value = t.task;
+  document.getElementById("assignedTo").value = t.assigned;
+  document.getElementById("statusSelect").value = t.status;
+  document.getElementById("dueDate").value = t.due || todayStr();
+  document.getElementById("repeatSelect").value = t.repeat || "";
+  document.getElementById("editIndex").value = i;
+}
+function deleteTask(i){ if(confirm("Delete?")){ tasks.splice(i,1); localStorage.setItem("tasks", JSON.stringify(tasks)); renderTable(); updateSummary(); } }
+
+/* Status flow:
+   pending -> inprogress -> completed_check -> verified
+*/
+function changeStatus(i){
+  const t = tasks[i];
+  if(t.status === "pending"){
+    t.status = "inprogress";
+    autoSignIn(t.assigned);
+  } else if(t.status === "inprogress"){
+    t.status = "completed_check";
+    autoSignOut(t.assigned);
+  } else if(t.status === "completed_check"){
+    alert("Awaiting supervisor verification.");
+  } else if(t.status === "verified"){
+    // allow cycle to pending if needed
+    t.status = "pending";
+  }
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+  localStorage.setItem("attendance", JSON.stringify(attendance));
+  renderTable(); updateSummary(); renderTodayAttendance();
+}
+function verifyTask(i){
+  if(!isSupervisor){ openModal('supervisorModal'); return; }
+  tasks[i].status = "verified";
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+  renderTable(); updateSummary();
+}
+
+/* Auto sign-in when work starts, auto sign-out when moving to completed_check */
+function ensureAttendanceForMemberToday(member){
+  const date = document.getElementById("attendanceDate").value || todayStr();
+  let rec = attendance.find(a => a.date === date && a.member === member);
+  if(!rec){
+    rec = { date, member, signIn: "", signOut: "", status: "Absent" };
+    attendance.push(rec);
+  }
+  return rec;
+}
+function autoSignIn(member){
+  const rec = ensureAttendanceForMemberToday(member);
+  if(!rec.signIn) rec.signIn = nowHM();
+  rec.status = calcStatusFromTimes(rec.signIn, rec.signOut);
+  localStorage.setItem("attendance", JSON.stringify(attendance));
+}
+function autoSignOut(member){
+  const rec = ensureAttendanceForMemberToday(member);
+  if(!rec.signOut) rec.signOut = nowHM();
+  rec.status = calcStatusFromTimes(rec.signIn, rec.signOut);
+  localStorage.setItem("attendance", JSON.stringify(attendance));
+}
+
+/* Render tasks table, charts, summary */
+function renderTable(){
+  const tb = document.querySelector("#taskTable tbody");
+  tb.innerHTML = "";
+  const today = todayStr();
+  tasks.forEach((t, i) => {
+    const isOverdue = t.due && t.due < today && t.status !== "verified";
+    tb.innerHTML += `<tr class="${isOverdue ? 'overdue' : ''}">
+      <td>${t.client || "-"}</td>
+      <td>${t.task || "-"}</td>
+      <td>${t.assigned || "-"}</td>
+      <td>
+        <button class="status-btn ${t.status}" onclick="changeStatus(${i})">${statusText(t.status)}</button>
+        ${t.status === "completed_check" ? `<button onclick="verifyTask(${i})" title="${isSupervisor ? 'Verify now' : 'Supervisor login required'}">🔍 Verify</button>` : ""}
+      </td>
+      <td>${t.due || "-"}</td>
+      <td>${t.repeat || "-"}</td>
+      <td>
+        <button onclick="editTask(${i})" title="Edit">✏</button>
+        <button onclick="deleteTask(${i})" title="Delete">🗑</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function statusText(s){
+  if(s === "pending") return "Pending";
+  if(s === "inprogress") return "In Progress";
+  if(s === "completed_check") return "Completed (Check)";
+  if(s === "verified") return "✅ Verified";
+  return s;
+}
+
+function updateSummary(){
+  const p = tasks.filter(t => t.status === "pending").length;
+  const ip = tasks.filter(t => t.status === "inprogress").length;
+  const c = tasks.filter(t => t.status === "verified" || t.status === "completed").length;
+  document.getElementById("pendingCount").textContent = p;
+  document.getElementById("inProgressCount").textContent = ip;
+  document.getElementById("completedCount").textContent = c;
+  updateCharts(p, ip, c);
+}
+
+let statusChart, teamChart;
+function updateCharts(p, ip, c){
+  if(statusChart) statusChart.destroy();
+  statusChart = new Chart(document.getElementById("statusChart"), {
+    type: "doughnut",
+    data: { labels: ["Pending", "In Progress", "Completed"], datasets: [{ data: [p, ip, c], backgroundColor: ["#dc3545", "#ffc107", "#28a745"] }] },
+    options: { plugins: { legend: { display: false } } }
+  });
+  if(teamChart) teamChart.destroy();
+  const members = team;
+  const pendingCounts = members.map(m => tasks.filter(t => t.assigned === m && t.status === "pending").length);
+  const inProgressCounts = members.map(m => tasks.filter(t => t.assigned === m && t.status === "inprogress").length);
+  const completedCounts = members.map(m => tasks.filter(t => t.assigned === m && (t.status === "verified" || t.status === "completed")).length);
+  teamChart = new Chart(document.getElementById("teamChart"), {
+    type: "bar",
+    data: { labels: members, datasets: [
+      { label: "Pending", data: pendingCounts, backgroundColor: "#dc3545" },
+      { label: "In Progress", data: inProgressCounts, backgroundColor: "#ffc107" },
+      { label: "Completed", data: completedCounts, backgroundColor: "#28a745" }
+    ]},
+    options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+  });
+}
+
+/* Clients & Team management */
+function renderClients(){
+  const tb = document.getElementById("clientTable"); tb.innerHTML = "";
+  clients.forEach((c, i) => tb.innerHTML += `<tr><td>${c}</td><td><button onclick="deleteClient(${i})">🗑</button></td></tr>`);
+}
+function addClient(){
+  const n = document.getElementById("newClient").value.trim();
+  if(n && !clients.includes(n)){ clients.push(n); localStorage.setItem("clients", JSON.stringify(clients)); document.getElementById("newClient").value = ""; renderClients(); loadDropdowns(); }
+}
+function deleteClient(i){
+  if(tasks.some(t => t.client === clients[i])){ alert("Client in use"); return; }
+  clients.splice(i,1); localStorage.setItem("clients", JSON.stringify(clients)); renderClients(); loadDropdowns();
+}
+
+function renderTeam(){
+  const tb = document.getElementById("teamTable"); tb.innerHTML = "";
+  team.forEach((m,i) => tb.innerHTML += `<tr><td>${m}</td><td><button onclick="deleteTeam(${i})">🗑</button></td></tr>`);
+}
+function addTeam(){
+  const n = document.getElementById("newTeam").value.trim();
+  if(n && !team.includes(n)){ team.push(n); localStorage.setItem("team", JSON.stringify(team)); document.getElementById("newTeam").value = ""; renderTeam(); loadDropdowns(); renderAttendanceGrid(); renderTodayAttendance(); }
+}
+function deleteTeam(i){
+  if(tasks.some(t => t.assigned === team[i])){ alert("Member in use"); return; }
+  team.splice(i,1); localStorage.setItem("team", JSON.stringify(team)); renderTeam(); loadDropdowns(); renderAttendanceGrid(); renderTodayAttendance();
+}
+
+function loadDropdowns(){
+  document.getElementById("clientName").innerHTML = clients.map(c => `<option>${c}</option>`).join("");
+  document.getElementById("assignedTo").innerHTML = team.map(m => `<option>${m}</option>`).join("");
+}
+
+/* ===== Recurring Task Auto-Generation ===== */
+function handleRecurringTasks(){
+  const today = todayStr();
+  const keyOf = t => `${t.client}|${t.task}|${t.assigned}|${t.due}|${t.repeat}`;
+  const existingKeys = new Set(tasks.map(keyOf));
+
+  const nextDateAfter = (dateStr, repeat) => {
+    let d = new Date(dateStr + "T00:00:00");
+    const bump = () => { if(repeat==="daily") d.setDate(d.getDate()+1); else if(repeat==="weekly") d.setDate(d.getDate()+7); else if(repeat==="monthly") d.setMonth(d.getMonth()+1); };
+    bump();
+    while(d.toISOString().split("T")[0] < today) bump();
+    return d.toISOString().split("T")[0];
+  };
+
+  let added = false;
+  tasks.slice().forEach(t => {
+    if(!t.repeat || !t.due) return;
+    if(t.due < today){
+      const nextDue = nextDateAfter(t.due, t.repeat);
+      const newTask = { client: t.client, task: t.task, assigned: t.assigned, status: "pending", due: nextDue, repeat: t.repeat };
+      const k = keyOf(newTask);
+      if(!existingKeys.has(k)){ tasks.push(newTask); existingKeys.add(k); added = true; }
     }
+  });
+  if(added) localStorage.setItem("tasks", JSON.stringify(tasks));
+}
 
-    clientFilter.addEventListener('change', filterTable);
-    memberFilter.addEventListener('change', filterTable);
-    statusFilter.addEventListener('change', filterTable);
-  </script>
+/* ===== Dark Mode ===== */
+function toggleDarkMode(){
+  document.body.classList.toggle("dark");
+  const isDark = document.body.classList.contains("dark");
+  localStorage.setItem("darkMode", isDark);
+  document.getElementById("darkToggleBtn").textContent = isDark ? "☀️" : "🌙";
+}
+function loadDarkMode(){
+  const isDark = localStorage.getItem("darkMode") === "true";
+  if(isDark) document.body.classList.add("dark");
+  document.getElementById("darkToggleBtn").textContent = isDark ? "☀️" : "🌙";
+}
+
+/* ===== Modals & init ===== */
+function openModal(id){
+  const el = document.getElementById(id); if(!el) return;
+  if(id === "attendanceModal") onOpenAttendance();
+  if(id === "supervisorModal"){
+    document.getElementById("supervisorLoginBox").style.display = isSupervisor ? "none":"block";
+    document.getElementById("supervisorPanel").style.display = isSupervisor ? "block":"none";
+  }
+  el.style.display = "block";
+}
+function closeModal(id){ const el = document.getElementById(id); if(el) el.style.display = "none"; }
+
+function initModals(){
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', e => { if(e.target === m) m.style.display = 'none'; });
+  });
+}
+
+function init(){
+  initModals();
+  loadData();
+  renderClients();
+  renderTeam();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
